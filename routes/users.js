@@ -7,18 +7,22 @@ const { getHashPassword, compareHashPassword } = require("../crypt/bcrypt")
 const { getToken, decodeToken } = require("../jwt/jwt")
 
 router.post("/login", async (req, res) => {
-    let username = req.body.username
+    let email = req.body.email
     let password = req.body.password
     try {
         let user = await USER.findOne({
-            username: username,
+            email: email,
         })
         if (user) {
             // User is present , compare password
             let isSame = await compareHashPassword(password, user.password)
             if (isSame) {
                 // Login Success Send the token
-                let token = await getToken({ username: username })
+                let token = await getToken({
+                    email: email,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                })
                 res.json({
                     success: true,
                     message: "user login sucessfully",
@@ -45,17 +49,23 @@ router.post("/login", async (req, res) => {
 })
 
 router.post("/register", async (req, res) => {
-    let username = req.body.username
-    let password = req.body.password
+    let { email, password, firstName, lastName, mobile } = req.body
     try {
         let hashedPassword = await getHashPassword(password)
         let user = new USER({
-            username: username,
+            email: email,
             password: hashedPassword,
+            firstName: firstName,
+            lastName: lastName,
+            mobile: mobile,
         })
         let addUser = await user.save()
         if (addUser) {
-            let token = await getToken({ username: username })
+            let token = await getToken({
+                email: email,
+                firstName: firstName,
+                lastName: lastName,
+            })
             res.json({
                 success: true,
                 message: "User added.",
@@ -65,7 +75,7 @@ router.post("/register", async (req, res) => {
     } catch (err) {
         res.json({
             success: false,
-            message: "User is not added.",
+            message: "ERR " + err,
         })
     }
 })
@@ -90,9 +100,9 @@ router.get("/getUserList", decodeToken, async (req, res) => {
 })
 
 router.post("/deleteUser", async (req, res) => {
-    let username = req.body.username
+    let email = req.body.email
     try {
-        let isUSerDeleted = await USER.deleteOne({ username: username })
+        let isUSerDeleted = await USER.deleteOne({ email: email })
         if (isUSerDeleted.deletedCount) {
             res.json({
                 success: true,
@@ -113,13 +123,13 @@ router.post("/deleteUser", async (req, res) => {
 })
 
 router.post("/changePassword", async (req, res) => {
-    let username = req.body.username
+    let email = req.body.email
     let oldPassword = req.body.oldPassword
     let newPassword = req.body.newPassword
 
     try {
         let changePasswordResponse = await USER.updateOne(
-            { username: username },
+            { email: email },
             { password: newPassword }
         )
         if (changePasswordResponse.modifiedCount) {

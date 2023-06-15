@@ -5,6 +5,7 @@ const config = require("dotenv").config()
 const mongoose = require("mongoose")
 
 const users = require("./routes/users.js")
+const product = require("./routes/product.js")
 
 const port = process.env.PORT
 
@@ -24,6 +25,7 @@ app.use(cors())
 
 // Routes
 app.use("/user", users)
+app.use("/product", product)
 
 app.listen(port, (req, res) => {
     console.log(`Server started on ${port}`)
