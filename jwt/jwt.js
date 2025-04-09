@@ -1,10 +1,10 @@
 const jwt = require("jsonwebtoken")
 
-const secret = process.env.SECRET
+const JWT_SECRET = process.env.JWT_SECRET
 
 const getToken = async (data) => {
     try {
-        const token = await jwt.sign(data, secret)
+        const token = await jwt.sign(data, JWT_SECRET)
         return token
     } catch (err) {
         console.log("Token Error " + err)
@@ -21,7 +21,7 @@ const decodeToken = async (req, res, next) => {
         })
     } else {
         try {
-            const decode = await jwt.verify(token, secret)
+            const decode = await jwt.verify(token, JWT_SECRET)
             req.decode = decode.user
             next()
         } catch (err) {
