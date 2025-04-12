@@ -7,7 +7,7 @@ const ProductModel = new Schema(
         color: [],
         size: [],
         price: { type: Number, required: true },
-        productPhoto: { type: String, required: true },
+        photo: { type: String, required: true }, // Field to store Base64 image
         creator: { type: String },
     },
     { timestramp: true }

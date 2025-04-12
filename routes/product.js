@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require("multer");
 const PRODUCT = require("../model/Product-Model");
 const { decodeToken } = require("../jwt/jwt");
+const fs = require("fs");
 
 const upload = multer({ dest: "uploads/" });
 const validatejwtToken = require("../middleware/authMiddleware");
@@ -37,18 +38,21 @@ router.get("/:id", async (req, res) => {
 
     if (product) {
       res.status(200).json({
-        sucess: true,
-        data: product,
+        success: true,
+        data: {
+          ...product._doc,
+          photo: `data:image/jpeg;base64,${product.photo}`, // Send the Base64 image with the proper data URI
+        },
       });
     } else {
       res.status(400).json({
-        sucess: false,
-        message: "wrong Product id",
+        success: false,
+        message: "Wrong Product ID",
       });
     }
   } catch (err) {
     res.status(400).json({
-      sucess: false,
+      success: false,
       message: "Error " + err,
     });
   }
@@ -60,43 +64,100 @@ router.get("/:id", async (req, res) => {
 router.post("/addProduct", upload.single("photo"), async (req, res) => {
   // Only Admin can access this route
   let { productType, price, color, size, creator } = req.body;
-  console.log(req.body);
-  
-//   console.log(req.file);
+
+  // Validate required fields
+  if (!productType || !price || !color || !size || !creator) {
+    return res.status(400).json({
+      success: false,
+      message: "All fields are required.",
+    });
+  }
+
+  // Validate if a file is uploaded
+  if (!req.file) {
+    return res.status(400).json({
+      success: false,
+      message: "Photo is required.",
+    });
+  }
+
+  // Validate file type (ensure it's an image)
+  const allowedMimeTypes = ["image/jpeg", "image/png", "image/jpg"];
+  if (!allowedMimeTypes.includes(req.file.mimetype)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid file type. Only JPEG and PNG are allowed.",
+    });
+  }
+
   try {
+    // Convert the uploaded file to a Base64 string
+    const imageBuffer = fs.readFileSync(req.file.path);
+    const base64Image = imageBuffer.toString("base64");
+
     let addProduct = new PRODUCT({
       productType: productType,
       price: price,
       color: color,
       size: size,
       creator: creator,
+      photo: base64Image, // Save the Base64 string in the database
     });
+
     let addProductRes = await addProduct.save();
     if (addProductRes) {
       res.status(201).json({
-        sucess: true,
+        success: true,
         message: "Product created.",
+        data: addProductRes,
       });
     } else {
       res.status(400).json({
-        sucess: false,
+        success: false,
         message: "Product not created.",
       });
     }
   } catch (err) {
     res.status(500).json({
-      sucess: false,
+      success: false,
       message: "ERR " + err,
     });
   }
 });
 
 // Add a route to update a product
-router.put("/:id", async (req, res) => {
+router.put("/:id", upload.single("photo"), async (req, res) => {
   let id = req.params.id;
-  let updateFields = req.body;
+  let { productType, price, color, size, creator } = req.body;
+
+  // Validate required fields
+  if (!productType || !price || !color || !size || !creator) {
+    return res.status(400).json({
+      success: false,
+      message: "All fields are required.",
+    });
+  }
 
   try {
+    let updateFields = { productType, price, color, size, creator };
+
+    // If a file is uploaded, process the image
+    if (req.file) {
+      // Validate file type (ensure it's an image)
+      const allowedMimeTypes = ["image/jpeg", "image/png", "image/jpg"];
+      if (!allowedMimeTypes.includes(req.file.mimetype)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid file type. Only JPEG and PNG are allowed.",
+        });
+      }
+
+      // Convert the uploaded file to a Base64 string
+      const imageBuffer = fs.readFileSync(req.file.path);
+      const base64Image = imageBuffer.toString("base64");
+      updateFields.photo = base64Image; // Add the Base64 image to the update fields
+    }
+
     let updatedProduct = await PRODUCT.findByIdAndUpdate(id, updateFields, {
       new: true,
     });
